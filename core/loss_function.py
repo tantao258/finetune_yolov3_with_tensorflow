@@ -32,7 +32,7 @@ def compute_loss(feature_maps, y_true, anchors):
     return [loss_coord, loss_sizes, loss_confs, loss_class]
 
 
-def loss_layer(feature_map_i, y_true_i, anchors_i, ignore_thresh=.5):
+def loss_layer(feature_map_i, y_true_i, anchors_i):
     """
 
     :param feature_map_i: the feature_map with shape [None, 13, 13, 5, 80] or [None, 26, 26, 5, 80] or [None, 52, 52, 5, 80]
