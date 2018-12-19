@@ -3,7 +3,7 @@ import tensorflow as tf
 from core.detect_function import get_boxes_confs_scores
 
 
-def compute_loss(feature_maps, boxes_true, anchors):
+def compute_loss(feature_maps, y_true, anchors):
     '''Return yolo_loss tensor
 
     Parameters
@@ -20,11 +20,16 @@ def compute_loss(feature_maps, boxes_true, anchors):
 
     '''
     anchors = [anchors[6:9], anchors[3:6], anchors[0:3]]
-    loss = 0
+    loss_coord, loss_sizes, loss_confs, loss_class = 0., 0., 0., 0.
     for i, feature_map in enumerate(feature_maps):
-        loss += loss_layer(feature_map, boxes_true[i], anchors[i])
+        loss = loss_layer(feature_map, y_true[i], anchors[i])
 
-    return loss
+        loss_coord += loss[0]
+        loss_sizes += loss[1]
+        loss_confs += loss[2]
+        loss_class += loss[3]
+
+    return [loss_coord, loss_sizes, loss_confs, loss_class]
 
 
 def loss_layer(feature_map_i, y_true_i, anchors_i, ignore_thresh=.5):
@@ -41,7 +46,7 @@ def loss_layer(feature_map_i, y_true_i, anchors_i, ignore_thresh=.5):
     scale = tf.cast([cfg.input_size, cfg.input_size] // grid_size, tf.float32)    # [416//13, 416//13]
 
     # predict with feature_map_i, the prediction result has been translated to origin size
-    pred_result = get_boxes_confs_scores(feature_map_i, anchors_i, cfg.num_classes, compute_loss=True)
+    pred_result = get_boxes_confs_scores(feature_map_i, anchors_i, compute_loss=True)
     xy_offset, pred_boxes, pred_boxes_confs, pred_boxes_class = pred_result
 
     true_boxes_xy = y_true_i[..., 0:2]   # true center xy origin scale
@@ -107,9 +112,8 @@ def loss_layer(feature_map_i, y_true_i, anchors_i, ignore_thresh=.5):
     loss_class = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true_i[..., 5:], logits=pred_boxes_class)
     loss_class = tf.reduce_sum(loss_class * class_mask) / (nb_class_box + 1e-6)
 
-    loss = loss_coord + loss_sizes + loss_confs + loss_class
+    return loss_coord, loss_sizes, loss_confs, loss_class
 
-    return loss
 
 
 

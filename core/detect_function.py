@@ -11,7 +11,7 @@ def predict(feature_maps, anchors):
                            (feature_map_2, anchors[3:6]),
                            (feature_map_3, anchors[0:3])]
 
-    results = [get_boxes_confs_scores(feature_map, anchors, cfg.num_classes) for (feature_map, anchors) in feature_map_anchors]
+    results = [get_boxes_confs_scores(feature_map, anchors) for (feature_map, anchors) in feature_map_anchors]
 
     boxes_list, confs_list, probs_list = [], [], []
     for result in results:
@@ -41,7 +41,7 @@ def predict(feature_maps, anchors):
 
 
 # 对特征图解码
-def get_boxes_confs_scores(feature_map, anchors, num_classes, compute_loss=False):
+def get_boxes_confs_scores(feature_map, anchors, compute_loss=False):
 
     num_anchors = len(anchors)              # num_anchors=3
     grid_size = tf.shape(feature_map)[1:3]
@@ -49,8 +49,8 @@ def get_boxes_confs_scores(feature_map, anchors, num_classes, compute_loss=False
     scale = tf.cast([cfg.input_size, cfg.input_size] // grid_size, tf.float32)
     anchors = [(a[0] / scale[0], a[1] / scale[1]) for a in anchors]                          # scale anchors
 
-    feature_map = tf.reshape(feature_map, [-1, grid_size[0], grid_size[1], num_anchors, 5 + num_classes])
-    box_centers, box_sizes, confs, probs = tf.split(feature_map, [2, 2, 1, num_classes], axis=-1)
+    feature_map = tf.reshape(feature_map, [-1, grid_size[0], grid_size[1], num_anchors, 5 + cfg.num_classes])
+    box_centers, box_sizes, confs, probs = tf.split(feature_map, [2, 2, 1, cfg.num_classes], axis=-1)
 
     probs_ = probs     # order to compute classification loss
     box_centers = tf.nn.sigmoid(box_centers)
@@ -78,7 +78,7 @@ def get_boxes_confs_scores(feature_map, anchors, num_classes, compute_loss=False
 
     boxes = tf.reshape(boxes, [-1, grid_size[0] * grid_size[1] * 3, 4])
     confs = tf.reshape(confs, [-1, grid_size[0] * grid_size[1] * 3, 1])
-    probs = tf.reshape(probs, [-1, grid_size[0] * grid_size[1] * 3, num_classes])
+    probs = tf.reshape(probs, [-1, grid_size[0] * grid_size[1] * 3, cfg.num_classes])
 
     return boxes, confs, probs
 
