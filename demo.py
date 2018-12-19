@@ -23,13 +23,15 @@ sess.run(utils.load_weights(tf.global_variables(scope='yolov3'), cfg.weights_fil
 
 while True:
     print("=============================================")
-    img_path = input("input the image path:")
-    try:
-        img = Image.open(img_path)   # input RGB format
-    except FileNotFoundError:
-        print("{} does not exists.".format(img_path))
-        img_path = input("input correct image path:")
-        img = Image.open(img_path)
+
+    flag = 0
+    while flag == 0:
+        img_path = input("input the image path:")
+        try:
+            img = Image.open(img_path)   # input RGB format
+            flag = 1
+        except FileNotFoundError:
+            print("{} does not exists.".format(img_path))
 
     img_resized = np.array(img.resize(size=(cfg.input_size, cfg.input_size)), dtype=np.float32)
     img_resized = img_resized / 255.
