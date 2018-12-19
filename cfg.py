@@ -1,5 +1,6 @@
 input_size = 416    # 608
 num_classes = 80
+max_boxes_num = 20                                   # max number of bboxes in one image
 anchors_path = "./data/yolo_anchors.txt"
 weights_file = "./checkpoint/yolov3.weights"
 font_path = "./data/font/FiraMono-Medium.otf"
