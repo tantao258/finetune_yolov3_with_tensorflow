@@ -74,7 +74,8 @@ class YOLO_V3(object):
             self.feature_maps_val = forward(self.x_input, self.anchors, is_training=False)
 
         with tf.variable_scope("loss"):
-            self.loss = compute_loss(self.feature_maps, self.boxes_true, self.anchors)
+            loss = compute_loss(self.feature_maps, self.boxes_true, self.anchors)
+            self.loss = sum(loss)
 
         with tf.variable_scope("train"):
             optimizer = tf.train.AdadeltaOptimizer(self.learning_rate)

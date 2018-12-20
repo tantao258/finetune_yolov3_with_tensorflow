@@ -1,45 +1,45 @@
-import numpy as np
+import cfg
+from PIL import Image
+from core import utils
 import tensorflow as tf
 
 
-def make_tfrecord():
-    A = np.array([[1, 2], [3, 4], [5, 6], [7, 8]])
-    B = np.array([[9, 10], [11, 12], [13, 14], [15, 16]])
-    C = [A, B]
+def make_tfrecord(tfrecord_path="./test.tfrecord"):
+    dataset = utils.read_image_box_from_text(cfg.dataset_txt)
+    image_paths = list(dataset.keys())
+    images_num = len(image_paths)
+    print(">> Processing %d images" % images_num)
 
-    tfrecord_file = "./test.tfrecord"
-    with tf.python_io.TFRecordWriter(tfrecord_file) as record_writer:
-        for item in C:
-            item = item.tostring()
+    with tf.python_io.TFRecordWriter(tfrecord_path) as record_writer:
+
+        for img_path in image_paths:
+            image = tf.gfile.FastGFile(img_path, 'rb').read()
+            bboxes, labels = dataset[img_path]
+            bboxes = bboxes.tostring()
+
             example = tf.train.Example(features=tf.train.Features(
                 feature={
-                    'x': tf.train.Feature(bytes_list=tf.train.BytesList(value=[item])),
+                    'image': tf.train.Feature(bytes_list=tf.train.BytesList(value=[image])),
+                    'bboxes': tf.train.Feature(bytes_list=tf.train.BytesList(value=[bboxes])),
+                    'labels': tf.train.Feature(int64_list=tf.train.Int64List(value=labels)),
                 }
             ))
             record_writer.write(example.SerializeToString())
+        print("making tfrecord file completed.")
 
-# make_tfrecord()
-
-def parser(serialized_example):
-    features = tf.parse_single_example(
-        serialized_example,
-        features={
-            'x':  tf.FixedLenFeature([], dtype=tf.string),
-        }
-    )
-    x = tf.decode_raw(features['x'], tf.int64)
-    x = tf.cast(x, tf.int64)
-    return x
+#
+# if __name__ == '__main__':
+#
+#     tfrecord_path = "./test.tfrecord"
+#     make_tfrecord(tfrecord_path=tfrecord_path)
 
 
-dataset = tf.data.TFRecordDataset(filenames="./test.tfrecord")
-dataset = dataset.map(parser, num_parallel_calls=10)
-dataset = dataset.repeat().batch(1)
-iterator = dataset.make_one_shot_iterator()
 
+from core.utils import ImageDataGenerator
+train_iterator = ImageDataGenerator(batch_size=1, shuffle=True)
+anchors = utils.get_anchors(cfg.anchors_path)
 
 with tf.Session() as sess:
-    for i in range(2):
-        x = sess.run(iterator.get_next())
-        print(x)
-        print("-------")
+    for i in range(1):
+        image, bboxes, labels, image_size = sess.run(train_iterator.iterator.get_next())
+        y_true = utils.preprocess_true_boxes(bboxes, labels, anchors, cfg.num_classes)
