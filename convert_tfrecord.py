@@ -4,6 +4,7 @@ from core import utils
 import tensorflow as tf
 
 
+
 def make_tfrecord(tfrecord_path="./test.tfrecord"):
     dataset = utils.read_image_box_from_text(cfg.dataset_txt)
     image_paths = list(dataset.keys())
