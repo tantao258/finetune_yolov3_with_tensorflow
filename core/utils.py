@@ -283,7 +283,7 @@ class ImageDataGenerator(object):
         with tf.name_scope("image_process"):
             image = tf.image.decode_jpeg(features['image'], channels=3)
             image = tf.image.convert_image_dtype(image, tf.uint8)
-            image_size = tf.to_float(tf.shape(image))[::-1]     # [channel, width, height]
+            image_size = tf.to_float(tf.shape(image))    # [h, w, c]
             image = tf.image.resize_images(image, size=(cfg.input_size, cfg.input_size))
 
         with tf.name_scope("y_true_process"):
@@ -292,9 +292,9 @@ class ImageDataGenerator(object):
             labels = features["labels"].values
 
             xx1 = tf.reshape(bboxes[..., 0] / tf.cast((image_size[1] / cfg.input_size), tf.float32), (-1, 1))  # image_shape = [h, w]
-            yy1 = tf.reshape(bboxes[..., 1] / tf.cast((image_size[2] / cfg.input_size), tf.float32), (-1, 1))
+            yy1 = tf.reshape(bboxes[..., 1] / tf.cast((image_size[0] / cfg.input_size), tf.float32), (-1, 1))
             xx2 = tf.reshape(bboxes[..., 2] / tf.cast((image_size[1] / cfg.input_size), tf.float32), (-1, 1))
-            yy2 = tf.reshape(bboxes[..., 3] / tf.cast((image_size[2] / cfg.input_size), tf.float32), (-1, 1))
+            yy2 = tf.reshape(bboxes[..., 3] / tf.cast((image_size[0] / cfg.input_size), tf.float32), (-1, 1))
             bboxes = tf.concat([xx1, yy1, xx2, yy2], axis=1)
 
         return image, bboxes, labels, image_size
