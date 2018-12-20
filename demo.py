@@ -18,7 +18,7 @@ for i, k in enumerate(tf.global_variables("yolov3"), start=1):
 sess.run(tf.global_variables_initializer())
 
 # Loading pre_trained weights
-print("Laoding weights ...")
+print("Loading weights ...")
 sess.run(utils.load_weights(tf.global_variables(scope='yolov3'), cfg.weights_file))
 
 while True:

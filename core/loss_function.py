@@ -18,11 +18,6 @@ def compute_loss(feature_maps, y_true, anchors):
         loss_confs += loss[2]
         loss_class += loss[3]
 
-    loss = tf.Print(loss, [loss_coord], message='loss coord:\t', summarize=1000)
-    loss = tf.Print(loss, [loss_sizes], message='loss sizes:\t', summarize=1000)
-    loss = tf.Print(loss, [loss_confs], message='loss confs:\t', summarize=1000)
-    loss = tf.Print(loss, [loss_class], message='loss class:\t', summarize=1000)
-
     return [loss_coord, loss_sizes, loss_confs, loss_class]
 
 
