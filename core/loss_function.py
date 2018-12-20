@@ -90,28 +90,3 @@ def loss_layer(feature_map_i, y_true, anchors):
     loss_class = tf.reduce_sum(loss_class * class_mask) / (nb_class_box + 1e-6)
 
     return loss_coord, loss_sizes, loss_confs, loss_class
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
