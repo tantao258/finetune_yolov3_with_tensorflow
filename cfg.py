@@ -37,5 +37,5 @@ CLASS_SCALE = 1.0
 
 # nms parameter
 score_thresh = 0.4               # default: 0.4    score低于这个值得框被丢掉，减小该值会得到更多的框
-iou_thresh = 0.6                 # default: 0.5    两个框的IOU超过这个值才认为是一个框， 增大数值大小将得到更多的框
+iou_thresh = 0.3                 # default: 0.5    两个框的IOU超过这个值才认为是一个框， 增大数值大小将得到更多的框
 max_boxes = 20

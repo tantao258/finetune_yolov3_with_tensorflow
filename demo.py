@@ -13,7 +13,7 @@ model = YOLO_V3()
 
 sess = tf.Session()
 
-for i, k in enumerate(tf.global_variables(), start=1):
+for i, k in enumerate(tf.global_variables("yolov3"), start=1):
     print(i, k.name)
 sess.run(tf.global_variables_initializer())
 

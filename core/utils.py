@@ -206,7 +206,7 @@ def preprocess_true_boxes(true_boxes, true_labels, anchors, num_classes):
                 y_true[l][b, i, j, k, 4] = 1
                 y_true[l][b, i, j, k, 5+c] = 1
 
-        return i
+        return y_true
 
 
 def read_image_box_from_text(text_path):
@@ -297,4 +297,4 @@ class ImageDataGenerator(object):
             yy2 = tf.reshape(bboxes[..., 3] / tf.cast((image_size[0] / cfg.input_size), tf.float32), (-1, 1))
             bboxes = tf.concat([xx1, yy1, xx2, yy2], axis=1)
 
-        return image, bboxes, labels, image_size
+        return image, bboxes, labels
