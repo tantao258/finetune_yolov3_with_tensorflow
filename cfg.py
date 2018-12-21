@@ -23,7 +23,7 @@ classes_names_file = "./data/coco.names"
 
 # generate dataSet parameter
 # default:
-dataset_txt = "./data/train_data/quick_train_data.txt"
+dataset_txt = "./data/train_data/train_data.txt"
 
 # default:
 tfrecord_save_path = "./data/train_data/"

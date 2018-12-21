@@ -3,7 +3,7 @@ from core import utils
 import tensorflow as tf
 
 
-def make_tfrecord(tfrecord_path="./test.tfrecord"):
+def make_tfrecord(tfrecord_path="./data/train_data/tfrecord/train.tfrecord"):
     dataset = utils.read_image_box_from_text(cfg.dataset_txt)
     image_paths = list(dataset.keys())
     images_num = len(image_paths)
@@ -29,7 +29,7 @@ def make_tfrecord(tfrecord_path="./test.tfrecord"):
 
 if __name__ == '__main__':
 
-    tfrecord_path = "./test.tfrecord"
+    tfrecord_path = "./data/train_data/tfrecord/train.tfrecord"
     make_tfrecord(tfrecord_path=tfrecord_path)
 
 

@@ -74,12 +74,24 @@ class YOLO_V3(object):
             self.feature_maps_val = forward(self.x_input, self.anchors, is_training=False)
 
         with tf.variable_scope("loss"):
-            loss = compute_loss(self.feature_maps, self.boxes_true, self.anchors)
-            self.loss = sum(loss)
+            self.loss = compute_loss(self.feature_maps, self.boxes_true, self.anchors)
+            self.loss_coord = self.loss[0]
+            self.loss_sizes = self.loss[1]
+            self.loss_confs = self.loss[2]
+            self.loss_class = self.loss[3]
 
         with tf.variable_scope("train"):
+            self.global_step = tf.Variable(0, name="global_step", trainable=False)
+            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+
+            var_list = [v for v in tf.trainable_variables()]
+            gradients = tf.gradients(sum(self.loss), var_list)
+            self.grads_and_vars = list(zip(gradients, var_list))
             optimizer = tf.train.AdadeltaOptimizer(self.learning_rate)
-            self.train_op = optimizer.minimize(self.loss)
+
+            with tf.control_dependencies(update_ops):
+                self.train_op = optimizer.apply_gradients(grads_and_vars=self.grads_and_vars,
+                                                          global_step=self.global_step)
 
         with tf.name_scope("prediction"):
             self.prediction = predict(self.feature_maps_val, self.anchors)

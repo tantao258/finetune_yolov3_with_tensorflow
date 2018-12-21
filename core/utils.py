@@ -129,6 +129,7 @@ def read_image_box_from_text(text_path):
 def resize_image_correct_bbox(image, bboxes, input_shape):
     image_size = tf.to_float(tf.shape(image)[0:2])[::-1]   # image.shape(h, w, c)
     image = tf.image.resize_images(image, size=input_shape)
+    image = image / 255.
 
     # correct bbox
     xx1 = bboxes[:, 0] * input_shape[0] / image_size[0]
