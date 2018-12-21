@@ -24,7 +24,7 @@ def compute_loss(feature_maps, y_true, anchors):
 def loss_layer(feature_map_i, y_true, anchors):
 
     grid_size = tf.shape(feature_map_i)[1:3]
-    stride = tf.cast([416, 416] // grid_size, dtype=tf.float32)
+    stride = tf.cast([cfg.input_size, cfg.input_size]//grid_size, dtype=tf.float32)
 
     pred_result = get_boxes_confs_scores(feature_map_i, anchors, compute_loss=True)
     xy_offset, pred_box, pred_box_conf, pred_box_class = pred_result
