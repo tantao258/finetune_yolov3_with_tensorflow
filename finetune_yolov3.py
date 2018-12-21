@@ -17,9 +17,10 @@ Main Part of the finetuning Script.
 # Load data on the cpu
 print("Loading data...")
 with tf.device('/cpu:0'):
-    train_iterator = ImageDataGenerator(batch_size=1, shuffle=True)
-    images, true_boxes, true_labels = train_iterator.iterator.get_next()
-    anchors = utils.get_anchors(cfg.anchors_path)
+    train_iterator = ImageDataGenerator(batch_size=2,
+                                        tfrecord_file="./test.tfrecord",
+                                        )
+    next_batch_train = train_iterator.iterator.get_next()
 
 
 # Initialize model
@@ -36,13 +37,12 @@ with tf.Session() as sess:
     step = 0
     while True:
         # train loop
-        image, bboxes, labels = sess.run(train_iterator.iterator.get_next())
-        y_true = utils.preprocess_true_boxes(bboxes, labels, anchors, cfg.num_classes)
+        image, y_true_13, y_true_26, y_true_52 = sess.run(next_batch_train)
         _, loss = sess.run([model.train_op, model.loss], feed_dict={
                                                             model.x_input: image,
-                                                            model.y_input_13: y_true[0],
-                                                            model.y_input_26: y_true[1],
-                                                            model.y_input_52: y_true[2],
+                                                            model.y_input_13: y_true_13,
+                                                            model.y_input_26: y_true_26,
+                                                            model.y_input_52: y_true_52,
                                                             model.learning_rate: 0.001
                                                             })
         print("step: {} loss: {}".format(step, loss))

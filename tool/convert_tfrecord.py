@@ -1,8 +1,6 @@
 import cfg
-from PIL import Image
 from core import utils
 import tensorflow as tf
-
 
 
 def make_tfrecord(tfrecord_path="./test.tfrecord"):
@@ -28,19 +26,12 @@ def make_tfrecord(tfrecord_path="./test.tfrecord"):
             record_writer.write(example.SerializeToString())
         print("making tfrecord file completed.")
 
-#
-# if __name__ == '__main__':
-#
-#     tfrecord_path = "./test.tfrecord"
-#     make_tfrecord(tfrecord_path=tfrecord_path)
+
+if __name__ == '__main__':
+
+    tfrecord_path = "./test.tfrecord"
+    make_tfrecord(tfrecord_path=tfrecord_path)
 
 
 
-from core.utils import ImageDataGenerator
-train_iterator = ImageDataGenerator(batch_size=1, shuffle=True)
-anchors = utils.get_anchors(cfg.anchors_path)
 
-with tf.Session() as sess:
-    for i in range(1):
-        image, bboxes, labels, image_size = sess.run(train_iterator.iterator.get_next())
-        y_true = utils.preprocess_true_boxes(bboxes, labels, anchors, cfg.num_classes)
