@@ -1,18 +1,32 @@
+# default:
 input_size = 416    # 608
+
+# default:
 num_classes = 80
+
+# default:
 max_boxes_num = 20                                   # max number of bboxes in one image
+# default:
 anchors_path = "./data/yolo_anchors.txt"
+
+# default:
 weights_file = "./checkpoint/yolov3.weights"
+
+# default:
 font_path = "./data/font/FiraMono-Medium.otf"
+
+# default:
 classes_names_file = "./data/coco.names"
 
 
 
 
 # generate dataSet parameter
+# default:
 dataset_txt = "./data/train_data/quick_train_data.txt"
+
+# default:
 tfrecord_save_path = "./data/train_data/"
-num_tfrecords = 3
 
 
 
