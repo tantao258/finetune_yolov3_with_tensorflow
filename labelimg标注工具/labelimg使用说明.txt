@@ -1,0 +1,5 @@
+labelimg windows版本解压即可使用。
+不用自己一个个敲类别名称。
+
+1.修改data文件下的 predefined_classes.txt，添加自己需要的类。
+2.图像路径不能有中文。
