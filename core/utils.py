@@ -104,6 +104,21 @@ def load_weights(var_list, weights_file):
     return assign_ops
 
 
+def average_gradients(tower_grads):
+    average_grads = []
+    for grad_and_vars in zip(*tower_grads):
+        grads = []
+        for g, _ in grad_and_vars:
+            expend_g = tf.expand_dims(g, 0)
+            grads.append(expend_g)
+        grad = tf.concat(grads, 0)
+        grad = tf.reduce_mean(grad, 0)
+        v = grad_and_vars[0][1]
+        grad_and_var = (grad, v)
+        average_grads.append(grad_and_var)
+    return average_grads
+
+
 def read_image_box_from_text(text_path):
     """
     :param text_path
