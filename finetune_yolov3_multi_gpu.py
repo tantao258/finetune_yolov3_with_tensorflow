@@ -1,6 +1,7 @@
 import os
 import cfg
 import time
+import numpy as np
 import datetime
 import tensorflow as tf
 from core import utils
@@ -75,9 +76,12 @@ with tf.Session() as sess:
 
     sess.run(tf.global_variables_initializer())
 
+    for i, k in enumerate(tf.global_variables("yolov3"), start=1):
+        print(i, k.name)
+
     # Loading pre_trained weights
-    print("Laoding weights ...")
-    sess.run(utils.load_weights(tf.global_variables(scope='yolov3'), cfg.weights_file))
+    print("Loading weights ...")
+    sess.run(utils.load_weights(tf.global_variables(scope='yolov3')[0:367], cfg.weights_file))
 
     while True:
         # train loop
@@ -99,7 +103,7 @@ with tf.Session() as sess:
         if current_step % FLAGS.checkpoint_every == 0:
             path = saver.save(sess, checkpoint_prefix, global_step=current_step)
             print("Saved model checkpoint to {}\n".format(path))
-        if current_step == 30:
+        if current_step == 50:
             exit()
 
 
