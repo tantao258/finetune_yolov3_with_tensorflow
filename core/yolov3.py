@@ -102,10 +102,10 @@ class YOLO_V3(object):
 
 
 class YOLO_V3_MULTI_GPU(object):
-    def __init__(self):
+    def __init__(self, batch_size, num_gpu):
         self.anchors = utils.get_anchors(cfg.anchors_path)
-        self.batch_size = 5
-        self.num_gpu = 4
+        self.num_gpu = num_gpu
+        self.batch_size = batch_size // self.num_gpu
 
         with tf.device("/cpu:0"):
             with tf.name_scope("input"):

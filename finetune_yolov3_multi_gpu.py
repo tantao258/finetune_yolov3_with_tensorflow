@@ -15,6 +15,7 @@ Configuration Part.
 """
 # Parameters
 tf.app.flags.DEFINE_integer("num_checkpoints", 2, "num_checkpoints(default:3)")
+tf.app.flags.DEFINE_integer("batch_size", 32, "batch_size")
 tf.app.flags.DEFINE_integer("evaluate_every", 200, "Evaluate model on dev set after this many steps (default: 100)")
 tf.app.flags.DEFINE_integer("checkpoint_every", 400, "Save model after this many steps (default: 100)")
 FLAGS = tf.app.flags.FLAGS
@@ -25,13 +26,13 @@ Main Part of the finetuning Script.
 # Load data on the cpu
 print("Loading data...")
 with tf.device('/cpu:0'):
-    train_iterator = ImageDataGenerator(batch_size=20,
+    train_iterator = ImageDataGenerator(batch_size=FLAGS.batch_size,
                                         tfrecord_file="./data/train_data/tfrecord/train.tfrecord",
                                         )
     next_batch_train = train_iterator.iterator.get_next()
 
 # Initialize model
-yolov3 = YOLO_V3_MULTI_GPU()
+yolov3 = YOLO_V3_MULTI_GPU(batch_size=FLAGS.batch_size, num_gpu=4)
 
 with tf.Session() as sess:
     timestamp = str(int(time.time()))
