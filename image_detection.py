@@ -42,4 +42,4 @@ while True:
 
     detection_detail(scores, labels, classes)
     image = draw_boxes(img, boxes, scores, labels, classes, show=True)
-    image.save('./data/demo_data/road_result.jpg')
+    image.save('./data/demo_data/result.jpg')

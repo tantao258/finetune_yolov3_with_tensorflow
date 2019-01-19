@@ -14,7 +14,7 @@ def conv2d_fixed_padding(inputs, filters, kernel_size, strides=1):
 
 
 @tf.contrib.framework.add_arg_scope
-def fixed_padding(inputs, kernel_size, *args, mode='CONSTANT', **kwargs):
+def fixed_padding(inputs, kernel_size, mode='CONSTANT', *args, **kwargs):
     """
     Pads the input along the spatial dimensions independently of input size.
     Args:
