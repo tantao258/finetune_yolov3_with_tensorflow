@@ -46,16 +46,13 @@ def get_boxes_confs_scores(feature_map, anchors, compute_loss=False):
     num_anchors = len(anchors)              # num_anchors=3
     grid_size = tf.shape(feature_map)[1:3]
 
-    scale = tf.cast([cfg.input_size, cfg.input_size] // grid_size, tf.float32)
-    anchors = [(a[0] / scale[0], a[1] / scale[1]) for a in anchors]                          # scale anchors
+    scale = tf.cast([cfg.input_size, cfg.input_size] / grid_size, tf.float32)
+    rescaled_anchors = [(a[0] / scale[1], a[1] / scale[0]) for a in anchors]                          # scale anchors
 
     feature_map = tf.reshape(feature_map, [-1, grid_size[0], grid_size[1], num_anchors, 5 + cfg.num_classes])
     box_centers, box_sizes, confs, probs = tf.split(feature_map, [2, 2, 1, cfg.num_classes], axis=-1)
 
-    probs_ = probs     # order to compute classification loss
     box_centers = tf.nn.sigmoid(box_centers)
-    confs = tf.nn.sigmoid(confs)
-    probs = tf.nn.sigmoid(probs)
 
     grid_x = tf.range(grid_size[0], dtype=tf.int32)
     grid_y = tf.range(grid_size[1], dtype=tf.int32)
@@ -67,14 +64,17 @@ def get_boxes_confs_scores(feature_map, anchors, compute_loss=False):
     x_y_offset = tf.cast(x_y_offset, tf.float32)
 
     box_centers = box_centers + x_y_offset
-    box_centers = box_centers * scale
-    box_sizes = tf.exp(box_sizes) * anchors
-    box_sizes = box_sizes * scale
+    box_centers = box_centers * scale[::-1]
+    box_sizes = tf.exp(box_sizes) * rescaled_anchors
+    box_sizes = box_sizes * scale[::-1]
 
     boxes = tf.concat([box_centers, box_sizes], axis=-1)
 
     if compute_loss:
-        return x_y_offset, boxes, confs, probs_
+        return x_y_offset, boxes, confs, probs
+
+    confs = tf.nn.sigmoid(confs)
+    probs = tf.nn.sigmoid(probs)
 
     boxes = tf.reshape(boxes, [-1, grid_size[0] * grid_size[1] * 3, 4])
     confs = tf.reshape(confs, [-1, grid_size[0] * grid_size[1] * 3, 1])

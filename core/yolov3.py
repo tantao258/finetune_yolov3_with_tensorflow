@@ -5,6 +5,7 @@ from core.common import conv2d_fixed_padding
 from core.forward_function import forward
 from core.loss_function import compute_loss
 from core.detect_function import predict
+from core.utils import config_optimizer
 
 slim = tf.contrib.slim
 
@@ -91,7 +92,7 @@ class YOLO_V3(object):
                 var_list = [v for v in tf.trainable_variables()]
                 gradients = tf.gradients(sum(self.loss), var_list)
                 self.grads_and_vars = list(zip(gradients, var_list))
-                optimizer = tf.train.AdadeltaOptimizer(self.learning_rate)
+                optimizer = config_optimizer("adam", self.learning_rate)
 
                 with tf.control_dependencies(update_ops):
                     self.train_op = optimizer.apply_gradients(grads_and_vars=self.grads_and_vars,

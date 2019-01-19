@@ -4,10 +4,11 @@ from core.detect_function import get_boxes_confs_scores
 
 
 def compute_loss(feature_maps, y_true, anchors):
-    """
-    Note: compute the loss
-    Arguments: y_pred, list -> [feature_map_1, feature_map_2, feature_map_3]  the shape of [None, 13, 13, 3*85]. etc
-    """
+    '''
+    param:
+        feature_maps: returned feature_map list by `forward` function: [feature_map_1, feature_map_2, feature_map_3]
+        y_true: input y_true by the tf.data pipeline
+    '''
     loss_coord, loss_sizes, loss_confs, loss_class = 0., 0., 0., 0.
     anchors = [anchors[6:9], anchors[3:6], anchors[0:3]]
 
@@ -24,64 +25,119 @@ def compute_loss(feature_maps, y_true, anchors):
 def loss_layer(feature_map_i, y_true, anchors):
 
     grid_size = tf.shape(feature_map_i)[1:3]
-    stride = tf.cast([cfg.input_size, cfg.input_size]//grid_size, dtype=tf.float32)
+    scale = tf.cast([cfg.input_size, cfg.input_size] / grid_size, dtype=tf.float32)
 
     pred_result = get_boxes_confs_scores(feature_map_i, anchors, compute_loss=True)
-    xy_offset, pred_box, pred_box_conf, pred_box_class = pred_result
+    xy_offset, pred_boxes, pred_box_conf, pred_box_class = pred_result
 
-    true_box_xy = y_true[..., :2]       # absolute coordinate
-    true_box_wh = y_true[..., 2:4]      # absolute size
+    ###########
+    # get mask
+    ###########
+    # shape: take 416x416 input image and 13*13 feature_map for example:
+    # [batch_size, 13, 13, 3, 1]
+    object_mask = y_true[..., 4:5]
+    # shape: [N, 13, 13, 3, 4] & [N, 13, 13, 3] ==> [V, 4]
+    # V: num of true gt box
+    valid_true_boxes = tf.boolean_mask(y_true[..., 0:4], tf.cast(object_mask[..., 0], 'bool'))
 
-    pred_box_xy = pred_box[..., :2]     # absolute coordinate
-    pred_box_wh = pred_box[..., 2:4]    # absolute size
+    # shape: [V, 2]
+    valid_true_box_xy = valid_true_boxes[:, 0:2]
+    valid_true_box_wh = valid_true_boxes[:, 2:4]
+    # shape: [N, 13, 13, 3, 2]
+    pred_box_xy = pred_boxes[..., 0:2]
+    pred_box_wh = pred_boxes[..., 2:4]
 
-    # caculate iou between true boxes and pred boxes
-    intersect_xy1 = tf.maximum(true_box_xy - true_box_wh / 2.0,
-                               pred_box_xy - pred_box_xy / 2.0)
-    intersect_xy2 = tf.minimum(true_box_xy + true_box_wh / 2.0,
-                               pred_box_xy + pred_box_wh / 2.0)
-    intersect_wh = tf.maximum(intersect_xy2 - intersect_xy1, 0.)
+    # calc iou
+    # shape: [N, 13, 13, 3, V]
+    iou = broadcast_iou(valid_true_box_xy, valid_true_box_wh, pred_box_xy, pred_box_wh)
+
+    # shape: [N, 13, 13, 3]
+    best_iou = tf.reduce_max(iou, axis=-1)
+
+    # get_ignore_mask
+    ignore_mask = tf.cast(best_iou < 0.5, tf.float32)
+    # shape: [N, 13, 13, 3, 1]
+    ignore_mask = tf.expand_dims(ignore_mask, -1)
+
+    # get xy coordinates in one cell from the feature_map
+    # numerical range: 0 ~ 1
+    # shape: [N, 13, 13, 3, 2]
+    true_xy = y_true[..., 0:2] / scale[::-1] - xy_offset
+    pred_xy = pred_box_xy / scale[::-1] - xy_offset
+
+    # get_tw_th
+    # numerical range: 0 ~ 1
+    # shape: [N, 13, 13, 3, 2]
+    true_tw_th = y_true[..., 2:4] / anchors
+    pred_tw_th = pred_box_wh / anchors
+    # for numerical stability
+    true_tw_th = tf.where(condition=tf.equal(true_tw_th, 0),
+                          x=tf.ones_like(true_tw_th),
+                          y=true_tw_th)
+    pred_tw_th = tf.where(condition=tf.equal(pred_tw_th, 0),
+                          x=tf.ones_like(pred_tw_th),
+                          y=pred_tw_th)
+    true_tw_th = tf.log(tf.clip_by_value(true_tw_th, 1e-9, 1e9))
+    pred_tw_th = tf.log(tf.clip_by_value(pred_tw_th, 1e-9, 1e9))
+
+    # box size punishment:
+    # box with smaller area has bigger weight. This is taken from the yolo darknet C source code.
+    # shape: [N, 13, 13, 3, 1]
+    box_loss_scale = 2. - (y_true[..., 2:3] / tf.cast(cfg.input_size, tf.float32)) * (y_true[..., 3:4] / tf.cast(cfg.input_size, tf.float32))
+
+    ############
+    # loss_part
+    ############
+    # shape: [N, 13, 13, 3, 1]
+    xy_loss = tf.reduce_sum(tf.square(true_xy - pred_xy) * object_mask * box_loss_scale) / cfg.batch_size
+    wh_loss = tf.reduce_sum(tf.square(true_tw_th - pred_tw_th) * object_mask * box_loss_scale) / cfg.batch_size
+
+    # shape: [N, 13, 13, 3, 1]
+    conf_pos_mask = object_mask
+    conf_neg_mask = (1 - object_mask) * ignore_mask
+    conf_loss_pos = conf_pos_mask * tf.nn.sigmoid_cross_entropy_with_logits(labels=object_mask, logits=pred_box_conf)
+    conf_loss_neg = conf_neg_mask * tf.nn.sigmoid_cross_entropy_with_logits(labels=object_mask, logits=pred_box_conf)
+    conf_loss = tf.reduce_sum(conf_loss_pos + conf_loss_neg) / cfg.batch_size
+
+    # shape: [N, 13, 13, 3, 1]
+    class_loss = object_mask * tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true[..., 5:], logits=pred_box_class)
+    class_loss = tf.reduce_sum(class_loss) / cfg.batch_size
+
+    return xy_loss, wh_loss, conf_loss, class_loss
+
+
+def broadcast_iou(true_box_xy, true_box_wh, pred_box_xy, pred_box_wh):
+    '''
+    maintain an efficient way to calculate the ios matrix between ground truth true boxes and the predicted boxes
+    note: here we only care about the size match
+    '''
+    # shape:
+    # true_box_??: [V, 2]
+    # pred_box_??: [N, 13, 13, 3, 2]
+
+    # shape: [N, 13, 13, 3, 1, 2]
+    pred_box_xy = tf.expand_dims(pred_box_xy, -2)
+    pred_box_wh = tf.expand_dims(pred_box_wh, -2)
+
+    # shape: [1, V, 2]
+    true_box_xy = tf.expand_dims(true_box_xy, 0)
+    true_box_wh = tf.expand_dims(true_box_wh, 0)
+
+    # [N, 13, 13, 3, 1, 2] & [1, V, 2] ==> [N, 13, 13, 3, V, 2]
+    intersect_mins = tf.maximum(pred_box_xy - pred_box_wh / 2.,
+                                true_box_xy - true_box_wh / 2.)
+    intersect_maxs = tf.minimum(pred_box_xy + pred_box_wh / 2.,
+                                true_box_xy + true_box_wh / 2.)
+    intersect_wh = tf.maximum(intersect_maxs - intersect_mins, 0.)
+
+    # shape: [N, 13, 13, 3, V]
     intersect_area = intersect_wh[..., 0] * intersect_wh[..., 1]
+    # shape: [N, 13, 13, 3, 1]
+    pred_box_area = pred_box_wh[..., 0] * pred_box_wh[..., 1]
+    # shape: [1, V]
+    true_box_area = true_box_wh[..., 0] * true_box_wh[..., 1]
 
-    true_area = true_box_wh[..., 0] * true_box_wh[..., 1]
-    pred_area = pred_box_wh[..., 0] * pred_box_wh[..., 1]
+    # [N, 13, 13, 3, V]
+    iou = intersect_area / (pred_box_area + true_box_area - intersect_area)
 
-    union_area = true_area + pred_area - intersect_area
-    iou_scores = tf.truediv(intersect_area, union_area)
-    iou_scores = tf.expand_dims(iou_scores, axis=-1)
-
-    true_box_conf = y_true[..., 4:5]
-
-    conf_mask = tf.to_float(iou_scores < 0.6) * (1 - y_true[..., 4:5]) * cfg.NO_OBJECT_SCALE
-    conf_mask = conf_mask + y_true[..., 4:5] * cfg.OBJECT_SCALE
-
-    true_box_xy = true_box_xy / stride - xy_offset
-    pred_box_xy = pred_box_xy / stride - xy_offset
-
-    true_box_wh_logit = true_box_wh / (anchors * stride)
-    pred_box_wh_logit = pred_box_wh / (anchors * stride)
-
-    true_box_wh_logit = tf.where(condition=tf.equal(true_box_wh_logit, 0),
-                                 x=tf.ones_like(true_box_wh_logit),
-                                 y=true_box_wh_logit)
-    pred_box_wh_logit = tf.where(condition=tf.equal(pred_box_wh_logit, 0),
-                                 x=tf.ones_like(pred_box_wh_logit),
-                                 y=pred_box_wh_logit)
-
-    true_box_wh = tf.log(true_box_wh_logit)
-    pred_box_wh = tf.log(pred_box_wh_logit)
-
-    class_mask = y_true[..., 4:5] * cfg.CLASS_SCALE
-    coord_mask = y_true[..., 4:5] * cfg.COORD_SCALE
-
-    nb_coord_box = tf.reduce_sum(tf.to_float(coord_mask > 0.0))
-    nb_conf_box = tf.reduce_sum(tf.to_float(conf_mask > 0.0))
-    nb_class_box = tf.reduce_sum(tf.to_float(class_mask > 0.0))
-
-    loss_coord = tf.reduce_sum(tf.square(true_box_xy - pred_box_xy) * coord_mask) / (nb_coord_box + 1e-6) / 2.
-    loss_sizes = tf.reduce_sum(tf.square(true_box_wh - pred_box_wh) * coord_mask) / (nb_coord_box + 1e-6) / 2.
-    loss_confs = tf.reduce_sum(tf.square(true_box_conf - pred_box_conf) * conf_mask) / (nb_conf_box + 1e-6) / 2.
-    loss_class = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true[..., 5:], logits=pred_box_class)
-    loss_class = tf.reduce_sum(loss_class * class_mask) / (nb_class_box + 1e-6)
-
-    return loss_coord, loss_sizes, loss_confs, loss_class
+    return iou

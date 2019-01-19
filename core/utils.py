@@ -104,6 +104,19 @@ def load_weights(var_list, weights_file):
     return assign_ops
 
 
+def config_optimizer(optimizer_name, learning_rate, decay=0.9, momentum=0.9):
+    if optimizer_name == 'momentum':
+        return tf.train.MomentumOptimizer(learning_rate, momentum=momentum)
+    elif optimizer_name == 'rmsprop':
+        return tf.train.RMSPropOptimizer(learning_rate, decay=decay, momentum=momentum)
+    elif optimizer_name == 'adam':
+        return tf.train.AdamOptimizer(learning_rate)
+    elif optimizer_name == 'sgd':
+        return tf.train.GradientDescentOptimizer(learning_rate)
+    else:
+        raise ValueError('Unsupported optimizer type!')
+
+
 def average_gradients(tower_grads):
     average_grads = []
     for grad_and_vars in zip(*tower_grads):

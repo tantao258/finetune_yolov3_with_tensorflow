@@ -108,7 +108,8 @@ def up_sample(inputs, out_shape):
 
 def detection_layer(inputs, anchors):
     num_anchors = len(anchors)
-    feature_map = slim.conv2d(inputs, num_anchors * (5 + cfg.num_classes), 1,
+    feature_map = slim.conv2d(inputs,
+                              num_anchors * (5 + cfg.num_classes), 1,
                               stride=1, normalizer_fn=None,
                               activation_fn=None,
                               biases_initializer=tf.zeros_initializer())

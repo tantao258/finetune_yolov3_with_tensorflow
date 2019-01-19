@@ -1,5 +1,6 @@
 # default:
 input_size = 416    # 608
+batch_size = 128
 
 # default:
 num_classes = 80
